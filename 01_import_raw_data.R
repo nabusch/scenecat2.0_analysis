@@ -31,7 +31,7 @@ vars$columns_of_interest <- c("stimulus", "correct_answer",
 # Where is all this stuff located?
 dirs <- list()
 dirs$main       <- "C:/Users/nbusch/sciebo_box_projects/Projects/2024_scenecat2.0/pilot"
-dirs$functions  <- paste0(dirs$main, "/code/functions/")
+dirs$functions  <- paste0(dirs$main, "/code/scenecat2.0_analysis/functions/")
 dirs$logfiles   <- paste0(dirs$main, "/data/logfiles/")
 
 
