@@ -12,6 +12,11 @@ fn_import_read_logfiles <- function(logfile_list, vars){
     # Read the file
     data <- read_csv(file, col_names = TRUE, show_col_types = FALSE)
     
+    # Check where the data where collected.
+    source(file.path(dirs$functions, "fn_check_logfile_place.R"))
+    place <- fn_check_logfile_place(data, vars)
+    data$place <- place
+    
     source(file.path(dirs$functions, "fn_german_to_english.R"))
     data <- fn_german_to_english(data, vars$column_renames)
     

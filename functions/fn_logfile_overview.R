@@ -1,4 +1,4 @@
-fn_logfile_overview <- function(logfile_list, vars) {
+fn_logfile_overview <- function(logfile_list, vars, dirs) {
   # Initialize an empty data frame to store results
   summary_data <- data.frame()
   
@@ -8,6 +8,10 @@ fn_logfile_overview <- function(logfile_list, vars) {
     
     # Read the file
     data <- read.csv(file_path)
+    
+    # Check where the data where collected.
+    source(file.path(dirs$functions, "fn_check_logfile_place.R"))
+    place <- fn_check_logfile_place(data, vars)
     
     source(file.path(dirs$functions, "fn_german_to_english.R"))
     data <- fn_german_to_english(data, vars$column_renames)
@@ -38,6 +42,7 @@ fn_logfile_overview <- function(logfile_list, vars) {
       Age          = Age,
       Gender       = Gender,
       Handedness   = Handedness,
+      Place        = place,
       Day          = day,
       Time         = time,
       nMemTrials   = nMemTrials,
@@ -58,7 +63,6 @@ fn_logfile_overview <- function(logfile_list, vars) {
   overview_name <- paste0(vars$exp_name, "_overview.xlsx")
   cat(sprintf("Saving logfile overview to %s\n", overview_name))
   write.xlsx(summary_data, file = file.path(dirs$main, overview_name), rowNames = FALSE)
-  
   
   return(summary_data)
 }
