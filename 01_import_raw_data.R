@@ -20,19 +20,20 @@ vars$exp_name            <- "scenecat_2.0"
 # to the Prague/Muenster version.
 vars$place_strings <- list(
   "vpcode" = "Muenster",
-  "email for compensation" = "Prague"
+  "email.for.compensation" = "Prague",
+  "If.you.are.participating.for.credits.under.the.LABELS.lab..fill.in.your.email.address.." = "Prague"
 )
 
 # The German version of this experiment has some columns named in German. Wie
 # need to rename these columns for consistency with the English version.
-vars$column_renames <- c("Alter"       = "Age", 
-                         "Geschlecht"  = "Gender", 
-                         "Haendigkeit" = "Handedness")
+vars$column_renames <- c("Alter"       = "age", 
+                         "Geschlecht"  = "gender", 
+                         "Haendigkeit" = "handedness")
 
 vars$columns_of_interest <- c("participant", "age", "gender", "handed", "place",
                               "task",
                               "target_cat", "cond_cat", "cat_key", "cat_corr", "cat_rt", 
-                              "cond_mem", "mem_response",
+                              "cond_mem", "mem_response", "mem_perform",
                               "typicality", "conceptual", "perceptual",  "category", "stimulus"
                               )
 
@@ -51,9 +52,9 @@ dirs <- list()
 dirs$main       <- "C:/Users/nbusch/sciebo_box_projects/Projects/2024_scenecat2.0/"
 dirs$functions  <- paste0(dirs$main, "/code/scenecat2.0_analysis/functions/")
 dirs$data       <- paste0(dirs$main, "/data/")
-dirs$logfiles   <- paste0(dirs$data, "/data_muenster_pilot/")
+# dirs$logfiles   <- paste0(dirs$data, "/data_muenster_pilot/")
 # dirs$logfiles   <- paste0(dirs$data, "/data_muenster/")
-# dirs$logfiles   <- paste0(dirs$data, "/data_prague/")
+dirs$logfiles   <- paste0(dirs$data, "/data_prague/")
 
 
 # === Read the log files. ======================================================

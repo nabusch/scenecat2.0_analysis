@@ -17,38 +17,16 @@ fn_import_format_logfiles <- function(vars, raw_data){
   # Remove rows that are neither categorization nor memory, i.e. the training trials.
   all_data <- all_data  %>%  filter(task %in% c("categorization", "memory"))
   
-  # Extract the columns we are interested in.
-  all_data <- all_data %>% select(all_of(vars$columns_of_interest))
-  
-  # Include a column coding if this was the online or local experiment.
-  all_data$version <- vars$version
-  
   all_data$cat_rt <- as.numeric(all_data$cat_rt)
   all_data$cat_corr <- as.numeric(all_data$cat_corr)
-  
-  
 
-    all_data <- all_data %>%
-      mutate(mem_response = as.character(mem_response),
-             mem_response = str_replace_all(mem_response, "d", "sure old"),
-             mem_response = str_replace_all(mem_response, "f", "maybe old"),
-             mem_response = str_replace_all(mem_response, "j", "sure new"),
-             mem_response = str_replace_all(mem_response, "k", "sure old"))  
-  
   all_data <- all_data %>%
-    mutate(gender = str_replace_all(gender, "weiblich",   "f"))
-  
-  all_data <- all_data %>%
-    mutate(gender = str_replace_all(gender, "männlich",   "m"))
-  
-  all_data <- all_data %>%
-    mutate(gender = str_replace_all(gender, "w",   "f"))
-  
-  all_data <- all_data %>%
-    mutate(handed = str_replace_all(handed, "rechts",   "right"))  %>%
-    mutate(handed = str_replace_all(handed, "rechts",   "right"))  
-  
-  
+    mutate(mem_response = as.character(mem_response),
+           mem_response = str_replace_all(mem_response, "d", "sure old"),
+           mem_response = str_replace_all(mem_response, "f", "maybe old"),
+           mem_response = str_replace_all(mem_response, "j", "sure new"),
+           mem_response = str_replace_all(mem_response, "k", "sure old"))  
+
   all_data <- all_data %>%
     mutate(mem_perform = case_when(
       cond_mem == "old" & str_detect(mem_response, "old") ~ "hit",
@@ -58,11 +36,13 @@ fn_import_format_logfiles <- function(vars, raw_data){
       TRUE ~ NA_character_ # Default case if none of the above conditions are met
     ))  
   
+  # Select only the columns we are interested in.
+  all_data <- all_data %>% select(all_of(vars$columns_of_interest))
   
   # Write output file.
   require(openxlsx)  # Make sure to load the openxlsx package
   
-  cleandata_name <- paste0(vars$exp_name, "_formatted_logs.xlsx")
+  cleandata_name <- paste0(vars$exp_name, "_", place, "_formatted_logs.xlsx")
   cat(sprintf("Saving formatted logfile data to %s\n", cleandata_name))
   write.xlsx(all_data, file = file.path(dirs$main, cleandata_name), rowNames = FALSE)
   
