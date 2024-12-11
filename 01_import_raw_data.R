@@ -14,6 +14,7 @@ p_load(dplyr, tidyr, stringr, readr)
 vars                     <- list()
 vars$exp_name            <- "scenecat_2.0"
 
+vars$min_logfile_kbsize <- 50 # some logfiles do not include all metadata (probably because the experiment was immediately interrupted). this makes the code crash. we need to exclude these files.
 
 # We need to code where a given dataset was collected. This is not coded in
 # thePsychopy logfiles, but we can infer it from certain columns that are unique
@@ -52,7 +53,7 @@ dirs <- list()
 dirs$main       <- "C:/Users/nbusch/sciebo_box_projects/Projects/2024_scenecat2.0/"
 dirs$functions  <- paste0(dirs$main, "/code/scenecat2.0_analysis/functions/")
 dirs$data       <- paste0(dirs$main, "/data/")
-# dirs$logfiles   <- paste0(dirs$data, "/data_muenster_pilot/")
+dirs$logfiles   <- paste0(dirs$data, "/data_muenster_pilot/")
 # dirs$logfiles   <- paste0(dirs$data, "/data_muenster/")
 dirs$logfiles   <- paste0(dirs$data, "/data_prague/")
 
@@ -61,7 +62,7 @@ dirs$logfiles   <- paste0(dirs$data, "/data_prague/")
 
 # Get a list of logfiles to process.
 source(file.path(dirs$functions, "fn_list_logfiles.R"))
-logfile_list <- fn_list_logfiles(dirs, "SceneCat_2023")
+logfile_list <- fn_list_logfiles(dirs, vars, "SceneCat_2023")
 
 # Get an overview of our datasets.
 source(file.path(dirs$functions, "fn_logfile_overview.R"))
