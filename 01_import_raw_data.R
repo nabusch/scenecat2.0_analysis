@@ -38,6 +38,18 @@ vars$columns_of_interest <- c("participant", "age", "gender", "handed", "place",
                               "typicality", "conceptual", "perceptual",  "category", "stimulus"
                               )
 
+# ATTENTION: when you first clone this repository, you need to edit the content
+# of the file TEMPLATEsetpaths.R as follows:
+#
+# - Open the script and edit all the directory names to match your local directory structure.
+# - Then save the script under setpath.R, i.e. omitting the "TEMPLATE" prefix.
+#
+# The rationale is that every user will have a different directory structure,
+# but we do not want to push and pull everyone's local settings back and forth
+# between each other. I have included the file "setpaths.R" in the .gitignore
+# list, so your local setpath.R script will not be tracked and synced by Git.
+
+dirs <- setpaths
 
 # Where is all this stuff located? My folder structure is:
 # 2024_scenecat2.0
