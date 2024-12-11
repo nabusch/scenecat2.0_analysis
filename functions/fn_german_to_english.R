@@ -1,4 +1,6 @@
 fn_german_to_english <- function(data, column_renames) {
+
+  # message("Translating any German column names to English.")
   
   # Rename columns if they exist
   for (col in names(column_renames)) {

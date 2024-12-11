@@ -3,9 +3,9 @@ fn_import_format_logfiles <- function(vars, raw_data){
   # Unify the columns coding responses in the categorization task.
   all_data <- raw_data %>% 
     rename(mem_response = memotest_task_slider_key_resp.keys) %>%
-    rename(gender = Gender) %>%
-    rename(handed = Handedness) %>%
-    rename(age    = Age) %>%
+    rename(gender = gender) %>%
+    rename(handed = handedness) %>%
+    rename(age    = age) %>%
     unite(cat_key,  kitchen_picture_resp.keys, bed_picture_resp.keys, living_picture_resp.keys, sep = "", na.rm = TRUE) %>% 
     unite(cat_corr, kitchen_picture_resp.corr, bed_picture_resp.corr, living_picture_resp.corr, sep = "", na.rm = TRUE) %>%
     unite(cat_rt,   kitchen_picture_resp.rt,   bed_picture_resp.rt,   living_picture_resp.rt,   sep = "", na.rm = TRUE) %>% 
@@ -17,7 +17,7 @@ fn_import_format_logfiles <- function(vars, raw_data){
   # Remove rows that are neither categorization nor memory, i.e. the training trials.
   all_data <- all_data  %>%  filter(task %in% c("categorization", "memory"))
   
-  all_data$cat_rt <- as.numeric(all_data$cat_rt)
+  all_data$cat_rt   <- as.numeric(all_data$cat_rt)
   all_data$cat_corr <- as.numeric(all_data$cat_corr)
 
   all_data <- all_data %>%
@@ -42,11 +42,9 @@ fn_import_format_logfiles <- function(vars, raw_data){
   # Write output file.
   require(openxlsx)  # Make sure to load the openxlsx package
   
-  cleandata_name <- paste0(vars$exp_name, "_", place, "_formatted_logs.xlsx")
+  cleandata_name <- paste0(vars$exp_name, "_", all_data$place[1], "_formatted_logs.xlsx")
   cat(sprintf("Saving formatted logfile data to %s\n", cleandata_name))
   write.xlsx(all_data, file = file.path(dirs$main, cleandata_name), rowNames = FALSE)
-  
-  
   
   return(all_data)
 }
