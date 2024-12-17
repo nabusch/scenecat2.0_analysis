@@ -56,7 +56,7 @@ dirs <- setpaths()
 
 # Get a list of logfiles to process.
 source(file.path(dirs$functions, "fn_list_logfiles.R"))
-logfile_list <- fn_list_logfiles(dirs, vars, "SceneCat_2023")
+logfile_list <- fn_list_logfiles(dirs, vars, "SceneCat")
 
 # Get an overview of our datasets.
 source(file.path(dirs$functions, "fn_logfile_overview.R"))
