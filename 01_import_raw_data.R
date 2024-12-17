@@ -46,7 +46,7 @@ vars$columns_of_interest <- c("participant", "age", "gender", "handed", "place",
 # The rationale is that every user will have a different directory structure,
 # but we do not want to push and pull everyone's local settings back and forth
 # between each other. I have included the file "setpaths.R" in the .gitignore
-# list, so your local setpath.R script will not be tracked and synced by Git.
+# list, so your local setpaths.R script will not be tracked and synced by Git.
 source("setpaths.R")
 dirs <- setpaths()
 
