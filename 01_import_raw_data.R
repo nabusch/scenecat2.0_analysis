@@ -20,6 +20,7 @@ vars$min_logfile_kbsize   <- 50 # some logfiles do not include all metadata (pro
 # the Psychopy logfiles, but we can infer it from certain columns that are unique
 # to the Prague/Muenster version.
 vars$place_strings       <- list(
+  "Alter"  = "Muenster",
   "vpcode" = "Muenster",
   "email"  = "Prague"
 )
