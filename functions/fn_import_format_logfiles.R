@@ -44,7 +44,7 @@ fn_import_format_logfiles <- function(vars, raw_data){
   
   cleandata_name <- paste0(vars$exp_name, "_", all_data$place[1], "_formatted_logs.xlsx")
   cat(sprintf("Saving formatted logfile data to %s\n", cleandata_name))
-  write.xlsx(all_data, file = file.path(dirs$main, cleandata_name), rowNames = FALSE)
+  write.xlsx(all_data, file = file.path(dirs$data, cleandata_name), rowNames = FALSE)
   
   return(all_data)
 }

@@ -97,7 +97,7 @@ fn_logfile_overview <- function(logfile_list, vars, dirs) {
   
   overview_name <- paste0(vars$exp_name, "_", place, "_overview.xlsx")
   cat(sprintf("Saving logfile overview to %s\n", overview_name))
-  write.xlsx(summary_data, file = file.path(dirs$main, overview_name), rowNames = FALSE)
+  write.xlsx(summary_data, file = file.path(dirs$data, overview_name), rowNames = FALSE)
   
   return(summary_data)
 }
