@@ -24,8 +24,8 @@ fn_import_format_logfiles <- function(vars, raw_data){
     mutate(mem_response = as.character(mem_response),
            mem_response = str_replace_all(mem_response, "d", "sure old"),
            mem_response = str_replace_all(mem_response, "f", "maybe old"),
-           mem_response = str_replace_all(mem_response, "j", "sure new"),
-           mem_response = str_replace_all(mem_response, "k", "sure old"))  
+           mem_response = str_replace_all(mem_response, "j", "maybe new"),
+           mem_response = str_replace_all(mem_response, "k", "sure new"))  
 
   all_data <- all_data %>%
     mutate(mem_perform = case_when(
