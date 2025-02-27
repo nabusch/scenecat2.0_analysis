@@ -9,7 +9,7 @@ params$csv_name            <- "scenecat2.0_feature_combination.csv"
 params$dir_csv             <- r"(C:\Users\nbusch\sciebo_box_projects\Projects\2024_scenecat_2.0\code\scenecat2.0_analysis\DNNfeature_analysis)"
 params$dir_img             <- r"(C:\Users\nbusch\sciebo_box_projects\Projects\2024_scenecat_2.0\code\scenecat2.0_analysis\DNNfeature_analysis\stimuli)"
 params$dnn_features_prefix <- "V" # Variables coding DNN features have this prefix. 
-params$pca_exvar           <- 0.95 # Extract n PCA components explaining so much total variance.
+params$pca_exvar           <- 0.26 # Extract n PCA components explaining so much total variance.
 params$pca_prefix          <- "PC"
 params$bad_imgs            <- c("img_cnyac", "img_d0k76", "img_89rmb", "img_aplao", "img_9jgbc", "img_jp28n", "img_ccn2w", "img_5jy9c")
 
@@ -78,5 +78,5 @@ plot_similarity_scatter(df_sim, plot_metrics, dependent_vars)
 # ------------------------------------------------------------------------------
 source("./functions/fn_plot_extremes.R")
 n_extremes <- 4
-fn_plot_extremes(df_sim, "dotproduct_distnct", n_extremes, params)
+fn_plot_extremes(df_sim, "correlation_distnct", n_extremes, params)
 
