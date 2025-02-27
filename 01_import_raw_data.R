@@ -71,11 +71,5 @@ raw_data <- fn_import_read_logfiles(logfile_list, vars)
 source(file.path(dirs$functions, "fn_import_format_logfiles.R"))
 all_data <- fn_import_format_logfiles(vars, raw_data)
 
-# ==============================================================================
-# Check to see how often each image was shown.
-# stimulus_counts <- all_data %>%
-#   count(stimulus, name = "count") %>%
-#   arrange(desc(count)) # Optional: sort by the count in descending order
-# 
-# # Display the result
-# stimulus_counts
+
+

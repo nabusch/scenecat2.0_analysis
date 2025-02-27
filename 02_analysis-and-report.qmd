@@ -1,0 +1,370 @@
+---
+title: "SceneCat categorization analysis"
+author: "Niko Busch"
+format:
+  html:
+    embed-resources: true 
+    theme: journal
+editor: visual
+---
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+# ------------------------------------------------------------------------------
+# Load packages, define analysis parameters, load data.
+# ------------------------------------------------------------------------------
+library(pacman)
+p_load(knitr, dplyr, gsubfn, tidyr, readxl, ggplot2, afex, emmeans, purrr, cowplot, stringr, apa)
+
+source("setpaths.R")
+dirs <- setpaths()
+dirs$plots     <- paste0(dirs$main, "plots/")
+
+vars                 <- list()
+vars$categories      <- c("bedroom", "kitchen", "living room")
+vars$cat_rt_min      <- 200 # consider only RTs faster than this.
+vars$cat_rt_max      <- 2000   # consider only RTs slower than this. 
+vars$cat_dprime_min  <- 1 # minimum dprime; otherwise: bad subject.
+vars$cat_ntrials_min <- 10  # minimum number of trials; otherwise: bad
+vars$mem_dprime_min  <- 0 # -99 effectively means: any d' value counts 
+vars$mem_ntrials_min <- 10  # minimum number of trials; otherwise: bad
+vars$mem_ncatch_max  <- 2   # maximum number of false alarms to catch trials
+
+data_muenster <- read_excel(file.path(dirs$data, "scenecat_2.0_Muenster_formatted_logs.xlsx")) %>%
+  mutate(category = as.factor(category))
+
+data_prague <- read_excel(file.path(dirs$data, "scenecat_2.0_Prague_formatted_logs.xlsx")) %>%
+  mutate(category = as.factor(category)) %>%
+  mutate(participant = participant + 1000) # Add 1000 to the participant column in data_prague
+
+
+
+all_data <- bind_rows(data_muenster, data_prague)
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=TRUE}
+# ------------------------------------------------------------------------------
+# Preprocessing und data summary. We first process the data to flag bad
+# subjects. A subject is defined as "bad" if any of the following rules applies:
+# -   d' in the categorization task is lower than `r vars$cat_dprime_min`
+# -   N trials in the categorization task is smaller than `r vars$cat_ntrials_min`
+# -   d' in the memory task is lower than `r vars$mem_dprime_min`
+# -   N trials in the memory task is smaller than `r vars$mem_ntrials_min`
+# ------------------------------------------------------------------------------
+source(file.path(dirs$functions, "fn_remove_missingvals.R"))
+source(file.path(dirs$functions, "fn_summarize_cat_accuracy.R"))
+source(file.path(dirs$functions, "fn_summarize_cat_rt.R"))
+source(file.path(dirs$functions, "fn_flagbad_cat.R"))
+source(file.path(dirs$functions, "fn_recode_memconfidence_labels.R"))
+source(file.path(dirs$functions, "fn_summarize_mem_accuracy.R"))
+source(file.path(dirs$functions, "fn_flagbad_mem_accuracy.R"))
+
+all_data <- all_data %>%
+  mutate(typi_bin = ifelse(typicality > median(typicality, na.rm = TRUE), "high", "low"))
+
+
+prep_data <- all_data %>%
+  fn_recode_memconfidence_labels() %>%
+  mutate(
+    cat_rt = cat_rt * 1000
+  ) %>%
+  mutate(
+    category = str_replace_all(category, c("living_rooms"="living room", "kitchens"="kitchen", "bedrooms"="bedroom"))
+  )
+
+catch_counts <- prep_data %>%
+  filter(task == "memory" & cond_mem == "catch") %>%
+  group_by(participant) %>%
+  summarize(n_catch = sum(mem_response != "sure new")) %>%
+  ungroup()
+
+# Join the calculated counts back to the original data
+prep_data <- prep_data %>%
+  left_join(catch_counts, by = "participant")
+
+# ..............................................................................
+# CATEGORIZATION: summarize RT and accuracy and flag bad subjects.
+# ..............................................................................
+summary_cat_accuracy <- fn_summarize_cat_accuracy(prep_data, vars) %>% fn_remove_missingvals(vars)
+# summary_cat_rt       <- fn_summarize_cat_rt(prep_data, vars) %>% fn_remove_missingvals(vars)
+list[summary_cat_rt_target, summary_cat_rt_distractor]       <- fn_summarize_cat_rt(prep_data, vars) 
+
+summary_cat_rt_target <- fn_remove_missingvals(summary_cat_rt_target, vars)
+summary_cat_rt_distractor <- fn_remove_missingvals(summary_cat_rt_distractor, vars)
+
+list[prep_data, summary_cat_accuracy, summary_cat_rt_target] <- fn_flagbad_cat(summary_cat_accuracy, summary_cat_rt_target, prep_data, vars)
+
+# ..............................................................................
+# MEMORY: accuracy and flag bad subjects.
+# ..............................................................................
+summary_mem_accuracy <- fn_summarize_mem_accuracy(prep_data, vars)
+
+list[prep_data, summary_mem_accuracy] <- fn_flagbad_mem_accuracy(summary_mem_accuracy, prep_data, vars)
+
+# ..............................................................................
+# Merge all summaries.
+# ..............................................................................
+summary_all <- reduce(list(summary_cat_accuracy, summary_cat_rt_target, summary_cat_rt_distractor, summary_mem_accuracy), full_join, by = c("participant", "typi_bin", "category"))
+
+summary_all <- summary_all %>% mutate(bad_any = if_else(bad_cat_rt == 1 | bad_cat_acc == 1 | bad_mem_dp == 1, 1, 0))
+
+prep_data <- prep_data %>% mutate(bad_any = if_else(bad_cat | bad_mem_dp == 1, 1, 0))
+
+# ..............................................................................
+# Remove participants if they have any kind of badness flag..
+# ..............................................................................
+bad_summary <- summary_all %>%
+  filter(bad_cat_rt == 1 | bad_cat_acc == 1 | bad_mem_dp == 1 | bad_catch == 1) %>%
+  select(participant, bad_cat_rt, bad_cat_acc, bad_mem_dp, bad_catch) %>%
+  distinct()
+
+bad_singletrials <- prep_data %>%
+  filter(bad_cat == 1 | bad_mem_dp == 1| bad_catch == 1) %>%
+  select(participant, bad_cat, bad_mem_dp | bad_catch) %>%
+  distinct()
+
+summary_all <- summary_all %>% anti_join(bad_summary, by = "participant")
+prep_data   <- prep_data   %>% anti_join(bad_singletrials, by = "participant")
+
+n_bad_cat <- bad_summary %>% filter(bad_cat_rt == 1 | bad_cat_acc == 1) %>% distinct(participant) %>% nrow()
+n_bad_mem <- bad_summary %>% filter(bad_mem_dp == 1)                    %>% distinct(participant) %>% nrow()
+n_bad_catch <- bad_summary %>% filter(bad_catch == 1)                    %>% distinct(participant) %>% nrow()
+n_bad_any <- bad_summary %>% filter(bad_cat_rt == 1 | bad_cat_acc == 1| bad_catch == 1) %>% distinct(participant) %>% nrow()
+
+```
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+# ------------------------------------------------------------------------------
+# Summarize demographic data.
+# ------------------------------------------------------------------------------
+source(file.path(dirs$functions, "fn_get_demographics.R"))
+demographics <- fn_get_demographics(data = all_data, id = "participant")
+
+```
+
+## Participants
+
+We collected data from `r demographics$n` participants (`r demographics$n_female` female; age range `r demographics$min_age` - `r demographics$max_age`, mean `r round(demographics$mean_age)` years; `r demographics$n_righthand` right handed) participants.
+
+Data from `r n_bad_mem` participants were excluded because accuracy in the memory task was too low (d' less than `r vars$mem_dprime_min`), and `r n_bad_catch` were excluded because they made false alarms to more than `r vars$mem_ncatch_max` catch trial.
+
+Data from `r n_bad_cat` participants were excluded because they included less than `r vars$cat_ntrials_min` correct trials per typicality condition within the range from `r vars$cat_rt_min` to `r vars$cat_rt_max`.
+
+Overall, the analysis included data from `r n_distinct(summary_all$participant)` participants.
+
+## Analyze categorization accuracy
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+# ------------------------------------------------------------------------------
+# CATEGORIZATION accuracy
+# ------------------------------------------------------------------------------
+
+anova_cat_accuracy <- aov_ez(id="participant", dv="cat_dprime", summary_all %>%
+  filter(bad_any == 0), within = c("typi_bin", "category"), es = "pes")
+
+nice(anova_cat_accuracy, es = "pes", "correction" = "GG")
+anova_apa(anova_cat_accuracy, format="latex", es="petasq", sph_corr="greenhouse-geisser")
+
+
+# Posthoc tests for interaction
+post_cat_accuracy <- summary(pairs(emmeans(anova_cat_accuracy, pairwise ~ typi_bin|category), adjust = 'holm'))
+print(post_cat_accuracy)
+
+
+plot_cat_accuracy <- afex_plot(anova_cat_accuracy, x = "typi_bin", 
+    trace = "category", error = "within", 
+    mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Categorization\nAccuracy", x = "Typicality", y = "d'") +
+  # scale_y_continuous(limits = c(0, NA)) + 
+  # theme_cowplot() +
+  theme_classic(base_size = 9) +
+  scale_color_discrete(labels = vars$categories) + guides(shape = "none") + 
+  theme(legend.position="bottom")
+print(plot_cat_accuracy)
+
+```
+
+## Analyze categorization response times
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+# ------------------------------------------------------------------------------
+# CATEGORIZATION response times.
+# ------------------------------------------------------------------------------
+anova_cat_rt <- aov_ez(id="participant", dv="cat_rt_target", summary_all %>%
+                         filter(bad_any == 0), within = c("typi_bin", "category"), es = "pes")
+
+nice(anova_cat_rt, es = "pes", "correction" = "GG")
+anova_apa(anova_cat_rt, format="latex", es="petasq", sph_corr="greenhouse-geisser")
+
+
+# Posthoc tests for interaction
+post_cat_rt <- summary(pairs(emmeans(anova_cat_rt, pairwise ~ typi_bin|category), adjust = 'holm'))
+print(post_cat_rt)
+
+
+plot_cat_rt <- afex_plot(anova_cat_rt, x = "typi_bin", 
+    trace = "category", error = "within", 
+    mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Categorization\nRTs", x = "Typicality", y = "RT (ms)") +
+  #scale_y_continuous(limits = c(400, 1000)) + 
+  theme_classic(base_size = 9) +
+  scale_color_discrete(labels = vars$categories) + guides(shape = "none") + 
+  # theme_cowplot() +
+  theme(legend.position = "bottom")
+# print(plot_cat_rt)
+
+```
+
+## Categorization response time distributions
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+
+single_trial_rt <- prep_data %>% filter(task == "categorization") %>% filter(cond_cat == "target") %>% filter(cat_corr == 1) %>% filter(bad_any == 0) %>% filter(cat_rt < vars$cat_rt_max) %>%  filter(cat_rt > vars$cat_rt_min)
+
+cat_rt <- single_trial_rt %>% group_by(typi_bin) %>% summarize( mean_cat_rt = mean(cat_rt, na.rm = TRUE), median_cat_rt = median(cat_rt, na.rm = TRUE) ) %>% ungroup()
+
+library("paletteer")
+plot_cat_singletrial_rts <- ggplot(single_trial_rt, aes(x = cat_rt, fill = typi_bin)) + 
+  geom_density(alpha = 0.5) +
+  geom_vline(data = cat_rt, aes(xintercept = mean_cat_rt, color = typi_bin), linetype = "dotted", linewidth = 1.2, show.legend = FALSE) + 
+  paletteer::scale_fill_paletteer_d("soilpalettes::podzol") +
+  paletteer::scale_color_paletteer_d("soilpalettes::podzol") +
+  labs(title = "Single trial RTs", x = "Response Time (ms)", y = "Density",fill='Typicality') +
+  #scale_colour_discrete(name = "Typicality") +
+  scale_x_continuous(limits = c(0, 1500)) + 
+  theme_classic(base_size = 9) +
+  theme_cowplot() #1+
+  # legend.position.inside = c(0.8, 0.75)  # Correct legend position specification
+
+```
+
+## Summary plot CATEGORIZATION
+
+```{r echo=FALSE, message=TRUE, warning=TRUE}
+
+library(ggpubr)
+
+top_plots <- ggarrange(
+  plot_cat_accuracy, plot_cat_rt,
+  align = "h", labels = c("A", "B"),
+  common.legend = TRUE, legend="bottom"
+)
+
+plot_cat <- plot_grid(top_plots,
+          plot_cat_singletrial_rts,
+          labels = c('', 'C'), ncol = 1, label_size = 12, align = "l",
+          rel_heights = c(1.5, 1))
+
+
+ggsave2("fig_cat.png", last_plot(), path=dirs$plots, bg="white", width=8.9, height=10, units="cm")
+
+
+```
+
+Response times were faster for high (`r round(cat_rt$mean_cat_rt[cat_rt$typi_bin == "high"], 3)` ms) than for low (`r round(cat_rt$mean_cat_rt[cat_rt$typi_bin == "low"], 3)` ms) images.
+
+## Recognition memory performance
+
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+
+# the variables mem_dprime and mem_crit refer to the conventional d' and c.
+# the variables mem_dprime_conf and mem_crit_conf are computed weighted by confidence rating.
+anova_mem_hitr <- aov_ez(id="participant", dv="mem_hitr", summary_all %>% filter(bad_any == 0), within = c("typi_bin", "category"))
+nice(anova_mem_hitr, es = "pes", "correction" = "GG")
+
+anova_mem_falr <- aov_ez(id="participant", dv="mem_falr", summary_all %>% filter(bad_any == 0), within = c("typi_bin", "category"))
+nice(anova_mem_falr, es = "pes", "correction" = "GG")
+
+anova_mem_acc <- aov_ez(id="participant", dv="mem_dprime", summary_all %>% filter(bad_any == 0), within = c("typi_bin", "category"))
+nice(anova_mem_acc, es = "pes", "correction" = "GG")
+anova_apa(anova_mem_acc, format="latex", es="petasq", sph_corr="greenhouse-geisser")
+post_mem_acc <- summary(pairs(emmeans(anova_mem_acc, pairwise ~ typi_bin|category), adjust = 'holm'))
+print(post_mem_acc)
+
+anova_mem_bias <- aov_ez(id="participant", dv="mem_crit", summary_all %>% filter(bad_any == 0), within = c("typi_bin", "category"))
+nice(anova_mem_bias, es = "pes", "correction" = "GG")
+anova_apa(anova_mem_bias, format="latex", es="petasq", sph_corr="greenhouse-geisser")
+print(emmeans(anova_mem_bias, pairwise ~ typi_bin))
+print(emmeans(anova_mem_bias, pairwise ~ category))
+print(emmeans(anova_mem_bias, pairwise ~ typi_bin|category))
+
+
+# Posthoc tests for interaction
+
+
+plot_mem_hitr <- afex_plot(anova_mem_hitr, x = "typi_bin", trace = "category", error = "within", mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Memory\naccuracy", x = "Typicality", y = "hit rate'") +
+  scale_y_continuous(limits = c(-0.5, 1.5)) + 
+  theme_classic(base_size = 9) +
+  theme(plot.title = element_text(size=10)) +
+  theme(legend.position="none")
+#print(plot_mem_hitr)
+
+plot_mem_falr <- afex_plot(anova_mem_falr, x = "typi_bin", trace = "category", error = "within", mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Memory\naccuracy", x = "Typicality", y = "false alarm rate'") +
+  scale_y_continuous(limits = c(-0.5, 1.5)) + 
+  theme_classic(base_size = 9) +
+  theme(plot.title = element_text(size=10)) +
+  theme(legend.position="none")
+#print(plot_mem_falr)
+
+plot_mem_accuracy <- afex_plot(anova_mem_acc, x = "typi_bin", trace = "category", error = "within", mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Memory\nAccuracy", x = "Typicality", y = "d'") +
+  #scale_y_continuous(limits = c(-0.5, 1.5)) + 
+  theme_classic(base_size = 9) +
+  theme(plot.title = element_text(size=10)) +
+  theme(legend.position="none")
+# print(plot_mem_accuracy)
+
+
+plot_mem_bias <- afex_plot(anova_mem_bias, x = "typi_bin", trace = "category", error = "within", mapping = c("shape", "color"), data_geom = geom_violin) +
+  labs(title = "Memory\nBias", x = "Typicality", y = "Criterion") +
+  #scale_y_continuous(limits = c(0, NA)) + 
+  theme_classic(base_size = 9) +
+  theme(plot.title = element_text(size=10)) +
+  theme(legend.position="none")
+
+#print(plot_mem_bias)
+plot_grid(plot_mem_hitr, plot_mem_falr, plot_mem_accuracy, plot_mem_bias, labels = "AUTO", label_size = 12, ncol = 2, align = "hv")
+
+plot_mem <- plot_grid(plot_mem_accuracy, plot_mem_bias, labels = c("D", "E"), label_size = 12, ncol = 2, align = "hv")
+
+plot_all <- plot_grid(plot_cat, plot_mem, nrow = 2, label_size = 12, align = "l",
+          rel_heights = c(2, 1))
+print(plot_all)
+
+ggsave2("fig_all.png", last_plot(), path=dirs$plots, bg="white", width=8.9, height=15, units="cm")
+
+
+```
+
+<!-- # Correlate categorization RT and memory accuracy. -->
+
+<!-- ```{r} -->
+
+<!-- source(file.path(dirs$functions, "fn_summarize_image_data.R")) -->
+
+<!-- library("viridis") -->
+
+<!-- summary_img <- fn_summarize_image_data(prep_data, vars) -->
+
+<!-- correlation <- cor(summary_img$img_cat_rt, summary_img$conf_score, use = "complete.obs") -->
+
+<!-- scatter_plot <- ggplot(summary_img, aes(x = img_cat_rt, y = conf_score, color = r_typicality)) + -->
+
+<!--   geom_point() + -->
+
+<!--     scale_color_viridis_c(option = "viridis", begin = 0, end = 1) +  -->
+
+<!--   labs(title = "Categorization speed predicts memory accuracy", x = "Categorization RT", y = "Recognition d'") + -->
+
+<!--   theme_minimal(base_size = 12) + -->
+
+<!--   annotate("text", x = Inf, y = Inf, label = paste("Correlation:", round(correlation, 2)),  -->
+
+<!--            hjust = 1.1, vjust = 2, size = 5, color = "blue") -->
+
+<!-- print(scatter_plot) -->
+
+<!-- ``` -->
